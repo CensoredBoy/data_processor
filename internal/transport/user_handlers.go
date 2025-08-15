@@ -8,13 +8,30 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
+func (s *Server) GetUserID(ctx context.Context, req *GetUserIDRequest) (*GetUserIDResponse, error) {
+	// Конвертируем protobuf User в common.User
+	user := &common.User{
+		Name: req.User.Name,
+		// Другие поля если есть
+	}
+
+	// Вызываем репозиторий
+	userID, err := s.userRepo.GetUserID(ctx, user)
+	if err != nil {
+		return nil, err
+	}
+
+	return &GetUserIDResponse{
+		UserId: int32(*userID),
+	}, nil
+}
 func (s *Server) CreateUser(ctx context.Context, req *CreateUserRequest) (*User, error) {
 	user := &common.User{
 		Name:     req.Name,
 		Password: req.Password,
 	}
 
-	if err := s.repositories.CreateUser(ctx, user); err != nil {
+	if err := s.userRepo.CreateUser(ctx, user); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to create user: %v", err)
 	}
 
@@ -25,7 +42,7 @@ func (s *Server) CreateUser(ctx context.Context, req *CreateUserRequest) (*User,
 }
 
 func (s *Server) GetUser(ctx context.Context, req *GetUserRequest) (*User, error) {
-	user, err := s.repositories.GetUserByID(ctx, common.UserID(req.Id))
+	user, err := s.userRepo.GetUserByID(ctx, common.UserID(req.Id))
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get user: %v", err)
 	}
@@ -40,7 +57,7 @@ func (s *Server) GetUser(ctx context.Context, req *GetUserRequest) (*User, error
 }
 
 func (s *Server) GetUserByName(ctx context.Context, req *GetUserByNameRequest) (*User, error) {
-	user, err := s.repositories.GetUserByName(ctx, req.Name)
+	user, err := s.userRepo.GetUserByName(ctx, req.Name)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get user: %v", err)
 	}
@@ -56,7 +73,7 @@ func (s *Server) GetUserByName(ctx context.Context, req *GetUserByNameRequest) (
 
 func (s *Server) UpdateUser(ctx context.Context, req *UpdateUserRequest) (*User, error) {
 	// Получаем текущие данные пользователя
-	currentUser, err := s.repositories.GetUserByID(ctx, common.UserID(req.Id))
+	currentUser, err := s.userRepo.GetUserByID(ctx, common.UserID(req.Id))
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get current user data: %v", err)
 	}
@@ -84,7 +101,7 @@ func (s *Server) UpdateUser(ctx context.Context, req *UpdateUserRequest) (*User,
 	}
 
 	// Выполняем обновление
-	if err := s.repositories.UpdateUser(ctx, updatedUser); err != nil {
+	if err := s.userRepo.UpdateUser(ctx, updatedUser); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to update user: %v", err)
 	}
 
@@ -94,14 +111,14 @@ func (s *Server) UpdateUser(ctx context.Context, req *UpdateUserRequest) (*User,
 	}, nil
 }
 func (s *Server) DeleteUser(ctx context.Context, req *DeleteUserRequest) (*emptypb.Empty, error) {
-	if err := s.repositories.DeleteUser(ctx, common.UserID(req.Id)); err != nil {
+	if err := s.userRepo.DeleteUser(ctx, common.UserID(req.Id)); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to delete user: %v", err)
 	}
 	return &emptypb.Empty{}, nil
 }
 
 func (s *Server) ListUsers(ctx context.Context, req *ListUsersRequest) (*ListUsersResponse, error) {
-	users, err := s.repositories.ListUsers(ctx)
+	users, err := s.userRepo.ListUsers(ctx)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to list users: %v", err)
 	}

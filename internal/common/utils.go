@@ -8,3 +8,25 @@ func (p Permission) Validate() error {
 	}
 	return nil
 }
+
+func Int32PtrFromIntPtr(i *int) *int32 {
+	if i == nil {
+		return nil
+	}
+	i32 := int32(*i)
+	return &i32
+}
+func Int32FromIntPtr(i *int) int32 {
+	if i == nil {
+		return 0
+	}
+	i32 := int32(*i)
+	return i32
+}
+func Int32PtrToIntPtr(i32 *int32) *int {
+	if i32 == nil {
+		return nil
+	}
+	i := int(*i32)
+	return &i
+}

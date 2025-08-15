@@ -13,7 +13,7 @@ func (s *Server) CreateScanInfo(ctx context.Context, req *CreateScanInfoRequest)
 		ScanID: int(req.ScanId),
 	}
 
-	if err := s.repositories.CreateScanInfo(ctx, scanInfo); err != nil {
+	if err := s.scanInfoRepo.CreateScanInfo(ctx, scanInfo); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to create scan info: %v", err)
 	}
 
@@ -24,7 +24,7 @@ func (s *Server) CreateScanInfo(ctx context.Context, req *CreateScanInfoRequest)
 }
 
 func (s *Server) GetScanInfo(ctx context.Context, req *GetScanInfoRequest) (*ScanInfo, error) {
-	scanInfo, err := s.repositories.GetScanInfoByID(ctx, int(req.Id))
+	scanInfo, err := s.scanInfoRepo.GetScanInfoByID(ctx, int(req.Id))
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get scan info: %v", err)
 	}
@@ -39,7 +39,7 @@ func (s *Server) GetScanInfo(ctx context.Context, req *GetScanInfoRequest) (*Sca
 }
 
 func (s *Server) GetScanInfoByScan(ctx context.Context, req *GetScanInfoByScanRequest) (*ScanInfo, error) {
-	scanInfo, err := s.repositories.GetScanInfoByScanID(ctx, int(req.ScanId))
+	scanInfo, err := s.scanInfoRepo.GetScanInfoByScanID(ctx, int(req.ScanId))
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get scan info: %v", err)
 	}
@@ -55,7 +55,7 @@ func (s *Server) GetScanInfoByScan(ctx context.Context, req *GetScanInfoByScanRe
 
 func (s *Server) UpdateScanInfo(ctx context.Context, req *UpdateScanInfoRequest) (*ScanInfo, error) {
 	// Получаем текущую информацию о сканировании
-	currentScanInfo, err := s.repositories.GetScanInfoByID(ctx, int(req.Id))
+	currentScanInfo, err := s.scanInfoRepo.GetScanInfoByID(ctx, int(req.Id))
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get current scan info: %v", err)
 	}
@@ -71,7 +71,7 @@ func (s *Server) UpdateScanInfo(ctx context.Context, req *UpdateScanInfoRequest)
 	// Обрабатываем ScanID (если не передано - оставляем текущее)
 	if req.ScanId != nil {
 		// Проверяем существование скана
-		if _, err := s.repositories.GetScanByID(ctx, int(*req.ScanId)); err != nil {
+		if _, err := s.scanRepo.GetScanByID(ctx, int(*req.ScanId)); err != nil {
 			return nil, status.Errorf(codes.InvalidArgument, "scan with id %d not found", req.ScanId)
 		}
 		updatedScanInfo.ScanID = int(*req.ScanId)
@@ -80,7 +80,7 @@ func (s *Server) UpdateScanInfo(ctx context.Context, req *UpdateScanInfoRequest)
 	}
 
 	// Обновляем информацию о сканировании
-	if err := s.repositories.UpdateScanInfo(ctx, updatedScanInfo); err != nil {
+	if err := s.scanInfoRepo.UpdateScanInfo(ctx, updatedScanInfo); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to update scan info: %v", err)
 	}
 
@@ -92,7 +92,7 @@ func (s *Server) UpdateScanInfo(ctx context.Context, req *UpdateScanInfoRequest)
 }
 
 func (s *Server) DeleteScanInfo(ctx context.Context, req *DeleteScanInfoRequest) (*emptypb.Empty, error) {
-	if err := s.repositories.DeleteScanInfo(ctx, int(req.Id)); err != nil {
+	if err := s.scanInfoRepo.DeleteScanInfo(ctx, int(req.Id)); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to delete scan info: %v", err)
 	}
 	return &emptypb.Empty{}, nil

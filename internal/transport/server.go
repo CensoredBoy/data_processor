@@ -14,11 +14,38 @@ type Server struct {
 	UnimplementedPermissionServiceServer
 	UnimplementedRoleServiceServer
 
-	repositories *repo.PgxRepository
+	userRepo        repo.IUserRepository
+	permRepo        repo.IPermissionRepository
+	roleRepo        repo.IRoleRepository
+	orgRepo         repo.IOrganizationRepository
+	applicationRepo repo.IApplicationRepository
+	scanRepo        repo.IScanRepository
+	scanRuleRepo    repo.IScanRuleRepository
+	scanInfoRepo    repo.IScanInfoRepository
+	teamRepo        repo.ITeamRepository
+	versionRepo     repo.IVersionRepository
 }
 
-func NewServer(repo *repo.PgxRepository) *Server {
+func NewServer(userRepo repo.IUserRepository,
+	permRepo repo.IPermissionRepository,
+	roleRepo repo.IRoleRepository,
+	orgRepo repo.IOrganizationRepository,
+	applicationRepo repo.IApplicationRepository,
+	scanRepo repo.IScanRepository,
+	scanRuleRepo repo.IScanRuleRepository,
+	scanInfoRepo repo.IScanInfoRepository,
+	teamRepo repo.ITeamRepository,
+	versionRepo repo.IVersionRepository) *Server {
 	return &Server{
-		repositories: repo,
+		userRepo:        userRepo,
+		permRepo:        permRepo,
+		roleRepo:        roleRepo,
+		orgRepo:         orgRepo,
+		applicationRepo: applicationRepo,
+		scanRepo:        scanRepo,
+		scanRuleRepo:    scanRuleRepo,
+		scanInfoRepo:    scanInfoRepo,
+		teamRepo:        teamRepo,
+		versionRepo:     versionRepo,
 	}
 }

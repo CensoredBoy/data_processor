@@ -26,7 +26,7 @@ func (s *Server) CreatePermission(ctx context.Context, req *CreatePermissionRequ
 		perm.TeamID = &teamID
 	}
 
-	if err := s.repositories.CreatePermission(ctx, perm); err != nil {
+	if err := s.permRepo.CreatePermission(ctx, perm); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to create permission: %v", err)
 	}
 
@@ -48,7 +48,7 @@ func (s *Server) CreatePermission(ctx context.Context, req *CreatePermissionRequ
 }
 
 func (s *Server) GetPermission(ctx context.Context, req *GetPermissionRequest) (*Permission, error) {
-	perm, err := s.repositories.GetPermissionByID(ctx, int(req.Id))
+	perm, err := s.permRepo.GetPermissionByID(ctx, int(req.Id))
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get permission: %v", err)
 	}
@@ -81,7 +81,7 @@ func (s *Server) GetTeamPermissions(
 
 	teamID := common.TeamID(req.TeamId)
 
-	perms, err := s.repositories.GetTeamPermissions(ctx, userID, teamID)
+	perms, err := s.permRepo.GetTeamPermissions(ctx, userID, teamID)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get team permissions: %v", err)
 	}
@@ -108,7 +108,7 @@ func (s *Server) GetOrganizationPermissions(
 
 	orgID := common.OrgID(req.OrgId)
 
-	perms, err := s.repositories.GetOrganizationPermissions(ctx, userID, orgID)
+	perms, err := s.permRepo.GetOrganizationPermissions(ctx, userID, orgID)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get organization permissions: %v", err)
 	}
@@ -125,7 +125,7 @@ func (s *Server) GetPermissionByName(ctx context.Context, req *GetPermissionByNa
 	}
 
 	// Получаем permission из репозитория
-	perm, err := s.repositories.GetPermissionByName(ctx, req.Name)
+	perm, err := s.permRepo.GetPermissionByName(ctx, req.Name)
 	if err != nil {
 		log.Printf("Error getting permission by name '%s': %v", req.Name, err)
 		return nil, status.Errorf(codes.Internal, "failed to get permission")
@@ -159,7 +159,7 @@ func (s *Server) GetPermissionByName(ctx context.Context, req *GetPermissionByNa
 
 func (s *Server) UpdatePermission(ctx context.Context, req *UpdatePermissionRequest) (*Permission, error) {
 	// 1. Получаем текущее состояние permission
-	currentPerm, err := s.repositories.GetPermissionByID(ctx, int(req.Id))
+	currentPerm, err := s.permRepo.GetPermissionByID(ctx, int(req.Id))
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get current permission: %v", err)
 	}
@@ -204,7 +204,7 @@ func (s *Server) UpdatePermission(ctx context.Context, req *UpdatePermissionRequ
 	case *UpdatePermissionRequest_OrganizationId:
 		orgID := int(scope.OrganizationId)
 		// Проверяем существование организации
-		if _, err := s.repositories.GetOrganizationByID(ctx, orgID); err != nil {
+		if _, err := s.orgRepo.GetOrganizationByID(ctx, orgID); err != nil {
 			return nil, status.Errorf(codes.InvalidArgument, "organization with id %d not found", orgID)
 		}
 		updatedPerm.OrganizationID = &orgID
@@ -212,7 +212,7 @@ func (s *Server) UpdatePermission(ctx context.Context, req *UpdatePermissionRequ
 	case *UpdatePermissionRequest_TeamId:
 		teamID := int(scope.TeamId)
 		// Проверяем существование команды
-		if _, err := s.repositories.GetTeamByID(ctx, teamID); err != nil {
+		if _, err := s.teamRepo.GetTeamByID(ctx, teamID); err != nil {
 			return nil, status.Errorf(codes.InvalidArgument, "team with id %d not found", teamID)
 		}
 		updatedPerm.TeamID = &teamID
@@ -224,14 +224,14 @@ func (s *Server) UpdatePermission(ctx context.Context, req *UpdatePermissionRequ
 	}
 
 	// 7. Проверяем уникальность имени permission
-	if existingPerm, err := s.repositories.GetPermissionByName(ctx, updatedPerm.Name); err == nil && existingPerm != nil && existingPerm.ID != updatedPerm.ID {
+	if existingPerm, err := s.permRepo.GetPermissionByName(ctx, updatedPerm.Name); err == nil && existingPerm != nil && existingPerm.ID != updatedPerm.ID {
 		return nil, status.Errorf(codes.AlreadyExists, "permission with name '%s' already exists", updatedPerm.Name)
 	} else if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to check permission uniqueness: %v", err)
 	}
 
 	// 8. Обновляем permission в репозитории
-	if err := s.repositories.UpdatePermission(ctx, updatedPerm); err != nil {
+	if err := s.permRepo.UpdatePermission(ctx, updatedPerm); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to update permission: %v", err)
 	}
 
@@ -254,14 +254,14 @@ func (s *Server) UpdatePermission(ctx context.Context, req *UpdatePermissionRequ
 }
 
 func (s *Server) DeletePermission(ctx context.Context, req *DeletePermissionRequest) (*emptypb.Empty, error) {
-	if err := s.repositories.DeletePermission(ctx, int(req.Id)); err != nil {
+	if err := s.permRepo.DeletePermission(ctx, int(req.Id)); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to delete permission: %v", err)
 	}
 	return &emptypb.Empty{}, nil
 }
 
 func (s *Server) ListPermissions(ctx context.Context, req *ListPermissionsRequest) (*ListPermissionsResponse, error) {
-	perms, err := s.repositories.ListPermissions(ctx)
+	perms, err := s.permRepo.ListPermissions(ctx)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to list permissions: %v", err)
 	}

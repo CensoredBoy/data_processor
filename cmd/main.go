@@ -1,4 +1,4 @@
-package cmd
+package main
 
 import (
 	"context"
@@ -30,7 +30,7 @@ func main() {
 		}),
 	)
 
-	server := data_processor.NewServer(repositories)
+	server := data_processor.NewServer(repositories, repositories, repositories, repositories, repositories, repositories, repositories, repositories, repositories, repositories)
 
 	// Регистрация сервисов
 	data_processor.RegisterUserServiceServer(grpcServer, server)

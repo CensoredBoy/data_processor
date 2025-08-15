@@ -14,10 +14,10 @@ func (s *Server) CreateRole(ctx context.Context, req *CreateRoleRequest) (*RoleW
 		Name:        req.Name,
 		Description: req.Description,
 		IsActive:    req.IsActive,
-		OwnerID:     int(req.OwnerId),
+		OwnerID:     common.UserID(req.OwnerId),
 	}
 
-	roleWithPerms, err := s.repositories.CreateRole(ctx, role)
+	roleWithPerms, err := s.roleRepo.CreateRole(ctx, role)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to create role: %v", err)
 	}
@@ -27,7 +27,7 @@ func (s *Server) CreateRole(ctx context.Context, req *CreateRoleRequest) (*RoleW
 
 func (s *Server) AddPermission(ctx context.Context, req *AddPermissionRequest) (*RoleWithPermissions, error) {
 	// Получаем permission для определения его scope
-	perm, err := s.repositories.GetPermissionByID(ctx, int(req.PermissionId))
+	perm, err := s.permRepo.GetPermissionByID(ctx, int(req.PermissionId))
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get permission: %v", err)
 	}
@@ -43,12 +43,12 @@ func (s *Server) AddPermission(ctx context.Context, req *AddPermissionRequest) (
 		tmpPerm.TeamID = perm.TeamID
 	}
 
-	if err := s.repositories.AddPermission(ctx, int(req.RoleId), tmpPerm); err != nil {
+	if err := s.roleRepo.AddPermission(ctx, int(req.RoleId), tmpPerm); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to add permission: %v", err)
 	}
 
 	// Возвращаем обновленную роль
-	roleWithPerms, err := s.repositories.GetRole(ctx, int(req.RoleId))
+	roleWithPerms, err := s.roleRepo.GetRole(ctx, int(req.RoleId))
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get role: %v", err)
 	}
@@ -57,7 +57,7 @@ func (s *Server) AddPermission(ctx context.Context, req *AddPermissionRequest) (
 }
 
 func (s *Server) GetRole(ctx context.Context, req *GetRoleRequest) (*RoleWithPermissions, error) {
-	role, err := s.repositories.GetRole(ctx, int(req.Id))
+	role, err := s.roleRepo.GetRole(ctx, int(req.Id))
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get role: %v", err)
 	}
@@ -69,7 +69,7 @@ func (s *Server) GetRole(ctx context.Context, req *GetRoleRequest) (*RoleWithPer
 }
 
 func (s *Server) GetRoleByName(ctx context.Context, req *GetRoleByNameRequest) (*Role, error) {
-	role, err := s.repositories.GetRoleByName(ctx, req.Name)
+	role, err := s.roleRepo.GetRoleByName(ctx, req.Name)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get role: %v", err)
 	}
@@ -105,7 +105,7 @@ func (s *Server) UpdateRole(ctx context.Context, req *UpdateRoleRequest) (*Role,
 		isActive = req.IsActive
 	}
 
-	role, err := s.repositories.UpdateRole(ctx, int(req.Id), name, description, isActive)
+	role, err := s.roleRepo.UpdateRole(ctx, int(req.Id), name, description, isActive)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to update role: %v", err)
 	}
@@ -122,7 +122,7 @@ func (s *Server) UpdateRole(ctx context.Context, req *UpdateRoleRequest) (*Role,
 }
 
 func (s *Server) DeleteRole(ctx context.Context, req *DeleteRoleRequest) (*emptypb.Empty, error) {
-	if err := s.repositories.DeleteRole(ctx, int(req.Id)); err != nil {
+	if err := s.roleRepo.DeleteRole(ctx, int(req.Id)); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to delete role: %v", err)
 	}
 	return &emptypb.Empty{}, nil
@@ -142,7 +142,7 @@ func (s *Server) DeleteRole(ctx context.Context, req *DeleteRoleRequest) (*empty
 //}
 
 func (s *Server) ListRoles(ctx context.Context, req *ListRolesRequest) (*ListRolesResponse, error) {
-	roles, err := s.repositories.ListRoles(ctx)
+	roles, err := s.roleRepo.ListRoles(ctx)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to list roles: %v", err)
 	}
@@ -175,7 +175,7 @@ func (s *Server) ListRolesByScope(ctx context.Context, req *ListRolesByScopeRequ
 		scope.TeamID = &teamID
 	}
 
-	roles, err := s.repositories.ListRolesByScope(ctx, scope)
+	roles, err := s.roleRepo.ListRolesByScope(ctx, scope)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to list roles by scope: %v", err)
 	}
@@ -189,21 +189,21 @@ func (s *Server) ListRolesByScope(ctx context.Context, req *ListRolesByScopeRequ
 }
 
 func (s *Server) AssignRoleToUser(ctx context.Context, req *AssignRoleRequest) (*emptypb.Empty, error) {
-	if err := s.repositories.AssignRoleToUser(ctx, int(req.UserId), int(req.RoleId)); err != nil {
+	if err := s.roleRepo.AssignRoleToUser(ctx, common.UserID(req.UserId), int(req.RoleId)); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to assign role to user: %v", err)
 	}
 	return &emptypb.Empty{}, nil
 }
 
 func (s *Server) RemoveRoleFromUser(ctx context.Context, req *RemoveRoleRequest) (*emptypb.Empty, error) {
-	if err := s.repositories.RemoveRoleFromUser(ctx, int(req.UserId), int(req.RoleId)); err != nil {
+	if err := s.roleRepo.RemoveRoleFromUser(ctx, common.UserID(req.UserId), int(req.RoleId)); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to remove role from user: %v", err)
 	}
 	return &emptypb.Empty{}, nil
 }
 
 func (s *Server) GetUserRoles(ctx context.Context, req *GetUserRolesRequest) (*ListRolesResponse, error) {
-	roles, err := s.repositories.GetUserRoles(ctx, int(req.UserId))
+	roles, err := s.roleRepo.GetUserRoles(ctx, common.UserID(req.UserId))
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get user roles: %v", err)
 	}

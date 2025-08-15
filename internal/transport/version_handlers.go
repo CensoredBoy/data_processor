@@ -14,7 +14,7 @@ func (s *Server) CreateVersion(ctx context.Context, req *CreateVersionRequest) (
 		Version:       req.Version,
 	}
 
-	if err := s.repositories.CreateVersion(ctx, version); err != nil {
+	if err := s.versionRepo.CreateVersion(ctx, version); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to create version: %v", err)
 	}
 
@@ -26,7 +26,7 @@ func (s *Server) CreateVersion(ctx context.Context, req *CreateVersionRequest) (
 }
 
 func (s *Server) GetVersion(ctx context.Context, req *GetVersionRequest) (*Version, error) {
-	version, err := s.repositories.GetVersionByID(ctx, int(req.Id))
+	version, err := s.versionRepo.GetVersionByID(ctx, int(req.Id))
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get version: %v", err)
 	}
@@ -42,7 +42,7 @@ func (s *Server) GetVersion(ctx context.Context, req *GetVersionRequest) (*Versi
 }
 
 func (s *Server) GetVersionByNumber(ctx context.Context, req *GetVersionByNumberRequest) (*Version, error) {
-	version, err := s.repositories.GetVersionByNumber(ctx, int(req.ApplicationId), req.Version)
+	version, err := s.versionRepo.GetVersionByNumber(ctx, int(req.ApplicationId), req.Version)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get version: %v", err)
 	}
@@ -59,7 +59,7 @@ func (s *Server) GetVersionByNumber(ctx context.Context, req *GetVersionByNumber
 
 func (s *Server) UpdateVersion(ctx context.Context, req *UpdateVersionRequest) (*Version, error) {
 	// Получаем текущую версию
-	currentVersion, err := s.repositories.GetVersionByID(ctx, int(req.Id))
+	currentVersion, err := s.versionRepo.GetVersionByID(ctx, int(req.Id))
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get current version: %v", err)
 	}
@@ -87,7 +87,7 @@ func (s *Server) UpdateVersion(ctx context.Context, req *UpdateVersionRequest) (
 	}
 
 	// Проверяем, что версия с такими параметрами не существует
-	if existingVersion, err := s.repositories.GetVersionByNumber(
+	if existingVersion, err := s.versionRepo.GetVersionByNumber(
 		ctx,
 		updatedVersion.ApplicationID,
 		updatedVersion.Version,
@@ -102,7 +102,7 @@ func (s *Server) UpdateVersion(ctx context.Context, req *UpdateVersionRequest) (
 	}
 
 	// Обновляем версию
-	if err := s.repositories.UpdateVersion(ctx, updatedVersion); err != nil {
+	if err := s.versionRepo.UpdateVersion(ctx, updatedVersion); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to update version: %v", err)
 	}
 
@@ -115,14 +115,14 @@ func (s *Server) UpdateVersion(ctx context.Context, req *UpdateVersionRequest) (
 }
 
 func (s *Server) DeleteVersion(ctx context.Context, req *DeleteVersionRequest) (*emptypb.Empty, error) {
-	if err := s.repositories.DeleteVersion(ctx, int(req.Id)); err != nil {
+	if err := s.versionRepo.DeleteVersion(ctx, int(req.Id)); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to delete version: %v", err)
 	}
 	return &emptypb.Empty{}, nil
 }
 
 func (s *Server) ListVersions(ctx context.Context, req *ListVersionsRequest) (*ListVersionsResponse, error) {
-	versions, err := s.repositories.ListVersions(ctx, int(req.ApplicationId))
+	versions, err := s.versionRepo.ListVersions(ctx, int(req.ApplicationId))
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to list versions: %v", err)
 	}

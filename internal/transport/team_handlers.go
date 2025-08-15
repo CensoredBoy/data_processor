@@ -16,7 +16,7 @@ func (s *Server) CreateTeam(ctx context.Context, req *CreateTeamRequest) (*Team,
 		OrganizationID: int(req.OrganizationId),
 	}
 
-	if err := s.repositories.CreateTeam(ctx, team); err != nil {
+	if err := s.teamRepo.CreateTeam(ctx, team); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to create team: %v", err)
 	}
 
@@ -30,7 +30,7 @@ func (s *Server) CreateTeam(ctx context.Context, req *CreateTeamRequest) (*Team,
 }
 
 func (s *Server) GetTeam(ctx context.Context, req *GetTeamRequest) (*Team, error) {
-	team, err := s.repositories.GetTeamByID(ctx, int(req.Id))
+	team, err := s.teamRepo.GetTeamByID(ctx, int(req.Id))
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get team: %v", err)
 	}
@@ -48,7 +48,7 @@ func (s *Server) GetTeam(ctx context.Context, req *GetTeamRequest) (*Team, error
 }
 
 func (s *Server) GetTeamByName(ctx context.Context, req *GetTeamByNameRequest) (*Team, error) {
-	team, err := s.repositories.GetTeamByName(ctx, req.Name)
+	team, err := s.teamRepo.GetTeamByName(ctx, req.Name)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get team: %v", err)
 	}
@@ -66,7 +66,7 @@ func (s *Server) GetTeamByName(ctx context.Context, req *GetTeamByNameRequest) (
 }
 
 func (s *Server) UpdateTeam(ctx context.Context, req *UpdateTeamRequest) (*Team, error) {
-	currentTeam, err := s.repositories.GetTeamByID(ctx, int(req.Id))
+	currentTeam, err := s.teamRepo.GetTeamByID(ctx, int(req.Id))
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get current team: %v", err)
 	}
@@ -102,7 +102,7 @@ func (s *Server) UpdateTeam(ctx context.Context, req *UpdateTeamRequest) (*Team,
 		updatedTeam.OrganizationID = currentTeam.OrganizationID
 	}
 
-	if err := s.repositories.UpdateTeam(ctx, updatedTeam); err != nil {
+	if err := s.teamRepo.UpdateTeam(ctx, updatedTeam); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to update team: %v", err)
 	}
 
@@ -116,14 +116,14 @@ func (s *Server) UpdateTeam(ctx context.Context, req *UpdateTeamRequest) (*Team,
 }
 
 func (s *Server) DeleteTeam(ctx context.Context, req *DeleteTeamRequest) (*emptypb.Empty, error) {
-	if err := s.repositories.DeleteTeam(ctx, int(req.Id)); err != nil {
+	if err := s.teamRepo.DeleteTeam(ctx, int(req.Id)); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to delete team: %v", err)
 	}
 	return &emptypb.Empty{}, nil
 }
 
 func (s *Server) ListTeams(ctx context.Context, req *ListTeamsRequest) (*ListTeamsResponse, error) {
-	teams, err := s.repositories.ListTeams(ctx)
+	teams, err := s.teamRepo.ListTeams(ctx)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to list teams: %v", err)
 	}
@@ -143,7 +143,7 @@ func (s *Server) ListTeams(ctx context.Context, req *ListTeamsRequest) (*ListTea
 }
 
 func (s *Server) ListTeamsByOrganization(ctx context.Context, req *ListByParentRequest) (*ListTeamsResponse, error) {
-	teams, err := s.repositories.ListTeamsByOrganization(ctx, int(req.ParentId))
+	teams, err := s.teamRepo.ListTeamsByOrganization(ctx, int(req.ParentId))
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to list teams by organization: %v", err)
 	}
@@ -163,7 +163,7 @@ func (s *Server) ListTeamsByOrganization(ctx context.Context, req *ListByParentR
 }
 
 func (s *Server) ListTeamsByOwner(ctx context.Context, req *ListByOwnerRequest) (*ListTeamsResponse, error) {
-	teams, err := s.repositories.ListTeamsByOwner(ctx, int(req.OwnerId))
+	teams, err := s.teamRepo.ListTeamsByOwner(ctx, int(req.OwnerId))
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to list teams by owner: %v", err)
 	}

@@ -54,7 +54,10 @@ func setupTestDB(t *testing.T) (*pgxpool.Pool, func()) {
 func applyMigrations(pool *pgxpool.Pool) error {
 	// Здесь должна быть реализация применения миграций
 	// В тестах можно использовать простой SQL для создания таблиц
-	_, err := pool.Exec(context.Background(), `CREATE TABLE users (
+	_, err := pool.Exec(context.Background(), `
+
+
+CREATE TABLE users (
                        id SERIAL PRIMARY KEY,
                        name VARCHAR(255) NOT NULL,
                        password VARCHAR(255) NOT NULL
@@ -153,21 +156,30 @@ CREATE TABLE scan_info (
 );
 
 CREATE TABLE scan_rules (
-                            id SERIAL PRIMARY KEY,
-                            application_id INTEGER NOT NULL,
-                            team_id INTEGER NOT NULL,
-                            organization_id INTEGER NOT NULL,
+                           id SERIAL PRIMARY KEY,
+                            application_id INTEGER NULL,
+                            team_id INTEGER NULL,
+                            organization_id INTEGER NULL,
                             sca_scan_enabled BOOLEAN,
                             sast_scan_enabled BOOLEAN,
+                            application_postfix VARCHAR(255),
+                            allow_unsafe_ext_distribs BOOLEAN,
+                            ignore_repository_membership BOOLEAN,
                             allow_incremental_scans BOOLEAN,
                             allow_sast_empty_code BOOLEAN,
-                            exclude_dir_regexp_queue VARCHAR(255) ARRAY,
+                            exclude_dir_regexp_queue TEXT ARRAY DEFAULT '{}',
                             forced_do_own_sbom BOOLEAN,
                             active_blocking_sca BOOLEAN,
                             FOREIGN KEY (application_id) REFERENCES applications(id) ON DELETE CASCADE,
                             FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE,
                             FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
-);`)
+);
+ALTER TABLE scan_rules ADD CONSTRAINT chk_rule_hierarchy CHECK (
+    (application_id IS NOT NULL AND team_id IS NOT NULL AND organization_id IS NOT NULL) OR  -- правило для приложения
+    (application_id IS NULL AND team_id IS NOT NULL AND organization_id IS NOT NULL) OR      -- правило для команды
+    (application_id IS NULL AND team_id IS NULL AND organization_id IS NOT NULL)             -- правило для организации
+    );
+`)
 	return err
 }
 

@@ -14,7 +14,7 @@ func (s *Server) CreateOrganization(ctx context.Context, req *CreateOrganization
 		OwnerID:     common.UserID(req.OwnerId),
 	}
 
-	if err := s.repositories.CreateOrganization(ctx, org); err != nil {
+	if err := s.orgRepo.CreateOrganization(ctx, org); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to create organization: %v", err)
 	}
 
@@ -26,7 +26,7 @@ func (s *Server) CreateOrganization(ctx context.Context, req *CreateOrganization
 }
 
 func (s *Server) GetOrganization(ctx context.Context, req *GetOrganizationRequest) (*Organization, error) {
-	org, err := s.repositories.GetOrganizationByID(ctx, int(req.Id))
+	org, err := s.orgRepo.GetOrganizationByID(ctx, int(req.Id))
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get organization: %v", err)
 	}
@@ -42,7 +42,7 @@ func (s *Server) GetOrganization(ctx context.Context, req *GetOrganizationReques
 }
 
 func (s *Server) GetOrganizationByName(ctx context.Context, req *GetOrganizationByNameRequest) (*Organization, error) {
-	org, err := s.repositories.GetOrganizationByName(ctx, req.Name)
+	org, err := s.orgRepo.GetOrganizationByName(ctx, req.Name)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get organization: %v", err)
 	}
@@ -58,7 +58,7 @@ func (s *Server) GetOrganizationByName(ctx context.Context, req *GetOrganization
 }
 
 func (s *Server) UpdateOrganization(ctx context.Context, req *UpdateOrganizationRequest) (*Organization, error) {
-	currentOrg, err := s.repositories.GetOrganizationByID(ctx, int(req.Id))
+	currentOrg, err := s.orgRepo.GetOrganizationByID(ctx, int(req.Id))
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get current organization: %v", err)
 	}
@@ -82,7 +82,7 @@ func (s *Server) UpdateOrganization(ctx context.Context, req *UpdateOrganization
 		updatedOrg.OwnerID = currentOrg.OwnerID
 	}
 
-	if err := s.repositories.UpdateOrganization(ctx, updatedOrg); err != nil {
+	if err := s.orgRepo.UpdateOrganization(ctx, updatedOrg); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to update organization: %v", err)
 	}
 
@@ -94,14 +94,14 @@ func (s *Server) UpdateOrganization(ctx context.Context, req *UpdateOrganization
 }
 
 func (s *Server) DeleteOrganization(ctx context.Context, req *DeleteOrganizationRequest) (*emptypb.Empty, error) {
-	if err := s.repositories.DeleteOrganization(ctx, int(req.Id)); err != nil {
+	if err := s.orgRepo.DeleteOrganization(ctx, int(req.Id)); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to delete organization: %v", err)
 	}
 	return &emptypb.Empty{}, nil
 }
 
 func (s *Server) ListOrganizations(ctx context.Context, req *ListOrganizationsRequest) (*ListOrganizationsResponse, error) {
-	orgs, err := s.repositories.ListOrganizations(ctx)
+	orgs, err := s.orgRepo.ListOrganizations(ctx)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to list organizations: %v", err)
 	}
@@ -119,7 +119,7 @@ func (s *Server) ListOrganizations(ctx context.Context, req *ListOrganizationsRe
 }
 
 func (s *Server) ListOrganizationsByOwner(ctx context.Context, req *ListByOwnerRequest) (*ListOrganizationsResponse, error) {
-	orgs, err := s.repositories.ListOrganizationsByOwner(ctx, common.UserID(req.OwnerId))
+	orgs, err := s.orgRepo.ListOrganizationsByOwner(ctx, common.UserID(req.OwnerId))
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to list organizations by owner: %v", err)
 	}

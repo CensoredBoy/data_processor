@@ -75,17 +75,20 @@ type ScanInfo struct {
 }
 
 type ScanRule struct {
-	ID                    int
-	ApplicationID         int
-	TeamID                int
-	OrganizationID        int
-	SCAScanEnabled        *bool
-	SASTScanEnabled       *bool
-	AllowIncrementalScans *bool
-	AllowSASTEmptyCode    *bool
-	ExcludeDirRegexpQueue []string
-	ForcedDoOwnSBOM       *bool
-	ActiveBlockingSCA     *bool
+	ID                         int
+	ApplicationID              *int
+	TeamID                     *int
+	OrganizationID             *int
+	SCAScanEnabled             *bool
+	SASTScanEnabled            *bool
+	ApplicationPostfix         *string
+	AllowUnsafeExtDistribs     *bool
+	IgnoreRepositoryMembership *bool
+	AllowIncrementalScans      *bool
+	AllowSASTEmptyCode         *bool
+	ExcludeDirRegexpQueue      []string
+	ForcedDoOwnSBOM            *bool
+	ActiveBlockingSCA          *bool
 }
 
 type RoleScope struct {

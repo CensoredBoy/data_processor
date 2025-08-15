@@ -102,11 +102,14 @@ CREATE TABLE scan_info (
 
 CREATE TABLE scan_rules (
                             id SERIAL PRIMARY KEY,
-                            application_id INTEGER NOT NULL,
-                            team_id INTEGER NOT NULL,
-                            organization_id INTEGER NOT NULL,
+                            application_id INTEGER,
+                            team_id INTEGER ,
+                            organization_id INTEGER ,
                             sca_scan_enabled BOOLEAN,
                             sast_scan_enabled BOOLEAN,
+                            application_postfix VARCHAR(255),
+                            allow_unsafe_ext_distribs BOOLEAN,
+                            ignore_repository_membership BOOLEAN,
                             allow_incremental_scans BOOLEAN,
                             allow_sast_empty_code BOOLEAN,
                             exclude_dir_regexp_queue VARCHAR(255) ARRAY,
@@ -117,6 +120,12 @@ CREATE TABLE scan_rules (
                             FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
 );
 
+ALTER TABLE scan_rules ADD CONSTRAINT chk_rule_hierarchy CHECK (
+    (application_id IS NOT NULL AND team_id IS NOT NULL AND organization_id IS NOT NULL) OR  -- правило для приложения
+    (application_id IS NULL AND team_id IS NOT NULL AND organization_id IS NOT NULL) OR      -- правило для команды
+    (application_id IS NULL AND team_id IS NULL AND organization_id IS NOT NULL)             -- правило для организации
+    );
+
 CREATE INDEX idx_roles_name ON roles(name);
 CREATE INDEX idx_permissions_name ON permissions(name);
 CREATE INDEX idx_organizations_project_name ON organizations(project_name);
@@ -124,6 +133,8 @@ CREATE INDEX idx_teams_team_name ON teams(team_name);
 CREATE INDEX idx_users_name ON users(name);
 CREATE INDEX idx_applications_name ON applications(name);
 CREATE INDEX idx_scan_rules_composite ON scan_rules(application_id, team_id, organization_id);
+
+
 -- +goose StatementEnd
 
 -- +goose Down

@@ -15,7 +15,7 @@ func (s *Server) CreateScan(ctx context.Context, req *CreateScanRequest) (*Scan,
 		VersionID: int(req.VersionId),
 	}
 
-	if err := s.repositories.CreateScan(ctx, scan); err != nil {
+	if err := s.scanRepo.CreateScan(ctx, scan); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to create scan: %v", err)
 	}
 
@@ -27,7 +27,7 @@ func (s *Server) CreateScan(ctx context.Context, req *CreateScanRequest) (*Scan,
 }
 
 func (s *Server) GetScan(ctx context.Context, req *GetScanRequest) (*Scan, error) {
-	scan, err := s.repositories.GetScanByID(ctx, int(req.Id))
+	scan, err := s.scanRepo.GetScanByID(ctx, int(req.Id))
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get scan: %v", err)
 	}
@@ -44,7 +44,7 @@ func (s *Server) GetScan(ctx context.Context, req *GetScanRequest) (*Scan, error
 
 func (s *Server) UpdateScan(ctx context.Context, req *UpdateScanRequest) (*Scan, error) {
 	// Получаем текущий скан
-	currentScan, err := s.repositories.GetScanByID(ctx, int(req.Id))
+	currentScan, err := s.scanRepo.GetScanByID(ctx, int(req.Id))
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get current scan: %v", err)
 	}
@@ -67,7 +67,7 @@ func (s *Server) UpdateScan(ctx context.Context, req *UpdateScanRequest) (*Scan,
 	// Обрабатываем VersionID (если не передано - оставляем текущее)
 	if req.VersionId != nil {
 		// Проверяем существование версии
-		if _, err := s.repositories.GetVersionByID(ctx, int(*req.VersionId)); err != nil {
+		if _, err := s.versionRepo.GetVersionByID(ctx, int(*req.VersionId)); err != nil {
 			return nil, status.Errorf(codes.InvalidArgument, "version with id %d not found", req.VersionId)
 		}
 		updatedScan.VersionID = int(*req.VersionId)
@@ -76,7 +76,7 @@ func (s *Server) UpdateScan(ctx context.Context, req *UpdateScanRequest) (*Scan,
 	}
 
 	// Обновляем скан
-	if err := s.repositories.UpdateScan(ctx, updatedScan); err != nil {
+	if err := s.scanRepo.UpdateScan(ctx, updatedScan); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to update scan: %v", err)
 	}
 
@@ -89,14 +89,14 @@ func (s *Server) UpdateScan(ctx context.Context, req *UpdateScanRequest) (*Scan,
 }
 
 func (s *Server) DeleteScan(ctx context.Context, req *DeleteScanRequest) (*emptypb.Empty, error) {
-	if err := s.repositories.DeleteScan(ctx, int(req.Id)); err != nil {
+	if err := s.scanRepo.DeleteScan(ctx, int(req.Id)); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to delete scan: %v", err)
 	}
 	return &emptypb.Empty{}, nil
 }
 
 func (s *Server) ListScans(ctx context.Context, req *ListScansRequest) (*ListScansResponse, error) {
-	scans, err := s.repositories.ListScans(ctx, int(req.VersionId))
+	scans, err := s.scanRepo.ListScans(ctx, int(req.VersionId))
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to list scans: %v", err)
 	}

@@ -15,7 +15,7 @@ func (s *Server) CreateApplication(ctx context.Context, req *CreateApplicationRe
 		TeamID:      int(req.TeamId),
 	}
 
-	if err := s.repositories.CreateApplication(ctx, app); err != nil {
+	if err := s.applicationRepo.CreateApplication(ctx, app); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to create application: %v", err)
 	}
 
@@ -28,7 +28,7 @@ func (s *Server) CreateApplication(ctx context.Context, req *CreateApplicationRe
 }
 
 func (s *Server) GetApplication(ctx context.Context, req *GetApplicationRequest) (*Application, error) {
-	app, err := s.repositories.GetApplicationByID(ctx, int(req.Id))
+	app, err := s.applicationRepo.GetApplicationByID(ctx, int(req.Id))
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get application: %v", err)
 	}
@@ -45,7 +45,7 @@ func (s *Server) GetApplication(ctx context.Context, req *GetApplicationRequest)
 }
 
 func (s *Server) GetApplicationByName(ctx context.Context, req *GetApplicationByNameRequest) (*Application, error) {
-	app, err := s.repositories.GetApplicationByName(ctx, req.Name)
+	app, err := s.applicationRepo.GetApplicationByName(ctx, req.Name)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get application: %v", err)
 	}
@@ -63,7 +63,7 @@ func (s *Server) GetApplicationByName(ctx context.Context, req *GetApplicationBy
 
 func (s *Server) UpdateApplication(ctx context.Context, req *UpdateApplicationRequest) (*Application, error) {
 	// Получаем текущее состояние приложения
-	currentApp, err := s.repositories.GetApplicationByID(ctx, int(req.Id))
+	currentApp, err := s.applicationRepo.GetApplicationByID(ctx, int(req.Id))
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get current application: %v", err)
 	}
@@ -98,7 +98,7 @@ func (s *Server) UpdateApplication(ctx context.Context, req *UpdateApplicationRe
 	}
 
 	// Обновляем приложение
-	if err := s.repositories.UpdateApplication(ctx, updatedApp); err != nil {
+	if err := s.applicationRepo.UpdateApplication(ctx, updatedApp); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to update application: %v", err)
 	}
 
@@ -112,14 +112,14 @@ func (s *Server) UpdateApplication(ctx context.Context, req *UpdateApplicationRe
 }
 
 func (s *Server) DeleteApplication(ctx context.Context, req *DeleteApplicationRequest) (*emptypb.Empty, error) {
-	if err := s.repositories.DeleteApplication(ctx, int(req.Id)); err != nil {
+	if err := s.applicationRepo.DeleteApplication(ctx, int(req.Id)); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to delete application: %v", err)
 	}
 	return &emptypb.Empty{}, nil
 }
 
 func (s *Server) ListApplications(ctx context.Context, req *ListApplicationsRequest) (*ListApplicationsResponse, error) {
-	apps, err := s.repositories.ListApplications(ctx)
+	apps, err := s.applicationRepo.ListApplications(ctx)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to list applications: %v", err)
 	}
@@ -138,7 +138,7 @@ func (s *Server) ListApplications(ctx context.Context, req *ListApplicationsRequ
 }
 
 func (s *Server) ListApplicationsByTeam(ctx context.Context, req *ListByParentRequest) (*ListApplicationsResponse, error) {
-	apps, err := s.repositories.ListApplicationsByTeam(ctx, int(req.ParentId))
+	apps, err := s.applicationRepo.ListApplicationsByTeam(ctx, int(req.ParentId))
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to list applications by team: %v", err)
 	}

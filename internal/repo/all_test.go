@@ -528,145 +528,124 @@ func TestScanRuleRepository(t *testing.T) {
 	}
 	err := repo.CreateApplication(ctx, app)
 	require.NoError(t, err)
+	org, err = repo.GetOrganizationByName(ctx, "test_org")
+	team, err = repo.GetTeamByName(ctx, "test_team")
+	app, err = repo.GetApplicationByName(ctx, "test-app")
+	// Тестовые правила для каждого уровня
+	orgRule := &common.ScanRule{
+		OrganizationID:        &org.ID,
+		SCAScanEnabled:        boolPtr(true),
+		AllowIncrementalScans: boolPtr(false),
+	}
+	teamRule := &common.ScanRule{
+		TeamID:             &team.ID,
+		OrganizationID:     &org.ID,
+		SASTScanEnabled:    boolPtr(true),
+		AllowSASTEmptyCode: boolPtr(false),
+	}
+	appRule := &common.ScanRule{
+		ApplicationID:         &app.ID,
+		TeamID:                &team.ID,
+		OrganizationID:        &org.ID,
+		ForcedDoOwnSBOM:       boolPtr(true),
+		ExcludeDirRegexpQueue: []string{"node_modules"},
+	}
 
-	// Вспомогательные переменные для boolean полей
-	scaEnabled := true
-	sastEnabled := false
-	allowIncremental := true
-	allowEmptyCode := false
-	forcedSBOM := true
-	activeBlocking := false
-
-	t.Run("Create and Get ScanRule", func(t *testing.T) {
-		rule := &common.ScanRule{
-			ApplicationID:         app.ID,
-			TeamID:                team.ID,
-			OrganizationID:        org.ID,
-			SCAScanEnabled:        &scaEnabled,
-			SASTScanEnabled:       &sastEnabled,
-			AllowIncrementalScans: &allowIncremental,
-			AllowSASTEmptyCode:    &allowEmptyCode,
-			ExcludeDirRegexpQueue: []string{"node_modules", "vendor"},
-			ForcedDoOwnSBOM:       &forcedSBOM,
-			ActiveBlockingSCA:     &activeBlocking,
-		}
-
-		// Тестируем создание правила
-		err := repo.CreateScanRule(ctx, rule)
-		require.NoError(t, err)
-		assert.NotZero(t, rule.ID)
-
-		// Тестируем получение по составному ключу
-		fetchedRule, err := repo.GetScanRuleByComposite(ctx, app.ID, team.ID, org.ID)
-		require.NoError(t, err)
-		require.NotNil(t, fetchedRule)
-
-		// Проверяем все поля
-		assert.Equal(t, rule.ID, fetchedRule.ID)
-		assert.Equal(t, rule.ApplicationID, fetchedRule.ApplicationID)
-		assert.Equal(t, rule.TeamID, fetchedRule.TeamID)
-		assert.Equal(t, rule.OrganizationID, fetchedRule.OrganizationID)
-		assert.Equal(t, *rule.SCAScanEnabled, *fetchedRule.SCAScanEnabled)
-		assert.Equal(t, *rule.SASTScanEnabled, *fetchedRule.SASTScanEnabled)
-		assert.Equal(t, *rule.AllowIncrementalScans, *fetchedRule.AllowIncrementalScans)
-		assert.Equal(t, *rule.AllowSASTEmptyCode, *fetchedRule.AllowSASTEmptyCode)
-		assert.Equal(t, rule.ExcludeDirRegexpQueue, fetchedRule.ExcludeDirRegexpQueue)
-		assert.Equal(t, *rule.ForcedDoOwnSBOM, *fetchedRule.ForcedDoOwnSBOM)
-		assert.Equal(t, *rule.ActiveBlockingSCA, *fetchedRule.ActiveBlockingSCA)
-
-		// Тестируем получение по ID
-		fetchedById, err := repo.GetScanRuleByID(ctx, rule.ID)
-		require.NoError(t, err)
-		require.NotNil(t, fetchedById)
-		assert.Equal(t, rule.ID, fetchedById.ID)
+	t.Run("Create rules for all levels", func(t *testing.T) {
+		require.NoError(t, repo.CreateScanRule(ctx, orgRule))
+		require.NoError(t, repo.CreateScanRule(ctx, teamRule))
+		require.NoError(t, repo.CreateScanRule(ctx, appRule))
 	})
 
-	t.Run("Update ScanRule", func(t *testing.T) {
-		// Создаем тестовое правило
-		rule := &common.ScanRule{
-			ApplicationID:         app.ID,
-			TeamID:                team.ID,
-			OrganizationID:        org.ID,
-			SCAScanEnabled:        &scaEnabled,
-			SASTScanEnabled:       &sastEnabled,
-			AllowIncrementalScans: &allowIncremental,
-		}
-		err := repo.CreateScanRule(ctx, rule)
+	t.Run("Get application rule with inheritance", func(t *testing.T) {
+		rule, err := repo.GetScanRuleByComposite(ctx, app.ID, team.ID, org.ID)
 		require.NoError(t, err)
+		require.NotNil(t, rule)
 
-		// Обновляем поля
-		newSastEnabled := true
-		newAllowIncremental := false
-		newExcludeDirs := []string{"build", "dist"}
-		updatedRule := &common.ScanRule{
-			ID:                    rule.ID,
-			ApplicationID:         app.ID,
-			TeamID:                team.ID,
-			OrganizationID:        org.ID,
-			SCAScanEnabled:        rule.SCAScanEnabled,
-			SASTScanEnabled:       &newSastEnabled,
-			AllowIncrementalScans: &newAllowIncremental,
-			ExcludeDirRegexpQueue: newExcludeDirs,
-		}
+		// Проверяем типы данных
+		assert.IsType(t, (*bool)(nil), rule.SCAScanEnabled)
+		assert.IsType(t, (*bool)(nil), rule.SASTScanEnabled)
+		assert.IsType(t, (*bool)(nil), rule.ForcedDoOwnSBOM)
 
-		err = repo.UpdateScanRule(ctx, updatedRule)
-		require.NoError(t, err)
-
-		// Проверяем обновленные данные
-		fetched, err := repo.GetScanRuleByID(ctx, rule.ID)
-		require.NoError(t, err)
-		assert.Equal(t, *updatedRule.SASTScanEnabled, *fetched.SASTScanEnabled)
-		assert.Equal(t, *updatedRule.AllowIncrementalScans, *fetched.AllowIncrementalScans)
-		assert.Equal(t, updatedRule.ExcludeDirRegexpQueue, fetched.ExcludeDirRegexpQueue)
+		// Проверяем значения
+		assert.Equal(t, true, *rule.SCAScanEnabled)  // Унаследовано от orgRule
+		assert.Equal(t, true, *rule.SASTScanEnabled) // Унаследовано от teamRule
+		assert.Equal(t, true, *rule.ForcedDoOwnSBOM) // Из appRule
+		assert.Equal(t, []string{"node_modules"}, rule.ExcludeDirRegexpQueue)
 	})
 
-	t.Run("List and Delete ScanRule", func(t *testing.T) {
-		// Создаем несколько правил
-		rule1 := &common.ScanRule{
-			ApplicationID:  app.ID,
-			TeamID:         team.ID,
-			OrganizationID: org.ID,
-			SCAScanEnabled: &scaEnabled,
-		}
-		rule2 := &common.ScanRule{
-			ApplicationID:   app.ID,
-			TeamID:          team.ID,
-			OrganizationID:  org.ID,
-			SASTScanEnabled: &sastEnabled,
-		}
-		require.NoError(t, repo.CreateScanRule(ctx, rule1))
-		require.NoError(t, repo.CreateScanRule(ctx, rule2))
-
-		// Тестируем получение списка
-		rules, err := repo.ListScanRules(ctx)
+	t.Run("Get team rule with inheritance", func(t *testing.T) {
+		rule, err := repo.GetScanRuleByComposite(ctx, 0, team.ID, org.ID) // appID = 0
 		require.NoError(t, err)
-		assert.GreaterOrEqual(t, len(rules), 2)
+		require.NotNil(t, rule)
 
-		// Тестируем удаление
-		err = repo.DeleteScanRule(ctx, rule1.ID)
-		require.NoError(t, err)
+		// Поля из teamRule
+		assert.Equal(t, *teamRule.SASTScanEnabled, *rule.SASTScanEnabled)
+		assert.Equal(t, *teamRule.AllowSASTEmptyCode, *rule.AllowSASTEmptyCode)
 
-		// Проверяем, что правило удалено
-		deletedRule, err := repo.GetScanRuleByID(ctx, rule1.ID)
-		require.NoError(t, err)
-		assert.Nil(t, deletedRule)
+		// Поля, унаследованные от orgRule
+		assert.Equal(t, *orgRule.SCAScanEnabled, *rule.SCAScanEnabled)
+		assert.Equal(t, *orgRule.AllowIncrementalScans, *rule.AllowIncrementalScans)
+
+		// Поля, которые должны быть nil (из appRule не берутся)
+		assert.Nil(t, rule.ForcedDoOwnSBOM)
+		assert.Nil(t, rule.ExcludeDirRegexpQueue)
 	})
 
-	t.Run("Edge Cases", func(t *testing.T) {
-		// Тест на NULL значения
-		nullRule := &common.ScanRule{
-			ApplicationID:  app.ID,
-			TeamID:         team.ID,
-			OrganizationID: org.ID,
-			// Остальные поля nil
-		}
-		err := repo.CreateScanRule(ctx, nullRule)
+	t.Run("Get org rule", func(t *testing.T) {
+		rule, err := repo.GetScanRuleByComposite(ctx, 0, 0, org.ID) // appID = 0, teamID = 0
 		require.NoError(t, err)
+		require.NotNil(t, rule)
 
-		fetchedNull, err := repo.GetScanRuleByID(ctx, nullRule.ID)
-		require.NoError(t, err)
-		assert.Nil(t, fetchedNull.SCAScanEnabled)
-		assert.Nil(t, fetchedNull.SASTScanEnabled)
-		assert.Nil(t, fetchedNull.ExcludeDirRegexpQueue)
+		// Поля из orgRule
+		assert.Equal(t, *orgRule.SCAScanEnabled, *rule.SCAScanEnabled)
+		assert.Equal(t, *orgRule.AllowIncrementalScans, *rule.AllowIncrementalScans)
+
+		// Все остальные поля должны быть nil
+		assert.Nil(t, rule.SASTScanEnabled)
+		assert.Nil(t, rule.AllowSASTEmptyCode)
+		assert.Nil(t, rule.ForcedDoOwnSBOM)
 	})
+
+	t.Run("Update rule with partial fields", func(t *testing.T) {
+		updated := &common.ScanRule{
+			ID:             appRule.ID,
+			ApplicationID:  &app.ID,
+			TeamID:         &team.ID,
+			OrganizationID: &org.ID,
+			SCAScanEnabled: boolPtr(false), // Переопределяем унаследованное значение
+		}
+
+		require.NoError(t, repo.UpdateScanRule(ctx, updated))
+
+		// Проверяем, что значение переопределилось
+		rule, err := repo.GetScanRuleByComposite(ctx, app.ID, team.ID, org.ID)
+		require.NoError(t, err)
+		assert.Equal(t, *updated.SCAScanEnabled, *rule.SCAScanEnabled)
+
+		// Проверяем, что остальные поля не изменились
+		assert.Equal(t, *teamRule.SASTScanEnabled, *rule.SASTScanEnabled)
+	})
+
+	t.Run("Delete rules", func(t *testing.T) {
+		require.NoError(t, repo.DeleteScanRule(ctx, appRule.ID))
+		require.NoError(t, repo.DeleteScanRule(ctx, teamRule.ID))
+		require.NoError(t, repo.DeleteScanRule(ctx, orgRule.ID))
+
+		// Проверяем, что правила удалились
+		assert.Nil(t, getRuleSilently(repo, ctx, appRule.ID))
+		assert.Nil(t, getRuleSilently(repo, ctx, teamRule.ID))
+		assert.Nil(t, getRuleSilently(repo, ctx, orgRule.ID))
+	})
+}
+
+// Вспомогательная функция для создания указателей на bool
+func boolPtr(b bool) *bool {
+	return &b
+}
+
+// Вспомогательная функция для безопасного получения правила
+func getRuleSilently(repo *PgxRepository, ctx context.Context, id int) *common.ScanRule {
+	rule, _ := repo.GetScanRuleByID(ctx, id)
+	return rule
 }
