@@ -66,8 +66,9 @@ func (s *Server) GetUserByName(ctx context.Context, req *GetUserByNameRequest) (
 	}
 
 	return &User{
-		Id:   int32(user.ID),
-		Name: user.Name,
+		Id:       int32(user.ID),
+		Name:     user.Name,
+		Password: user.Password,
 	}, nil
 }
 
