@@ -37,10 +37,13 @@ func (s *Server) AddPermission(ctx context.Context, req *AddPermissionRequest) (
 
 	// Создаем временный permission для передачи в AddPermission
 	tmpPerm := &common.Permission{ID: int(req.PermissionId)}
-	if perm.OrganizationID != nil {
-		tmpPerm.OrganizationID = perm.OrganizationID
-	} else if perm.TeamID != nil {
-		tmpPerm.TeamID = perm.TeamID
+	switch s := req.Scope.(type) {
+	case *AddPermissionRequest_OrganizationId:
+		orgID := int(s.OrganizationId)
+		tmpPerm.OrganizationID = &orgID
+	case *AddPermissionRequest_TeamId:
+		teamID := int(s.TeamId)
+		tmpPerm.TeamID = &teamID
 	}
 
 	if err := s.roleRepo.AddPermission(ctx, int(req.RoleId), tmpPerm); err != nil {
