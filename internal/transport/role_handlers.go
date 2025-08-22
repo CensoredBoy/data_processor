@@ -131,18 +131,18 @@ func (s *Server) DeleteRole(ctx context.Context, req *DeleteRoleRequest) (*empty
 	return &emptypb.Empty{}, nil
 }
 
-//func (s *Server) RemovePermission(ctx context.Context, req *RemovePermissionRequest) (*RoleWithPermissions, error) {
-//	if err := s.repositories.RemovePermission(ctx, int(req.RoleId), req.PermissionIds}); err != nil {
-//		return nil, status.Errorf(codes.Internal, "failed to remove permission: %v", err)
-//	}
-//
-//	roleWithPerms, err := s.repositories.GetRole(ctx, int(req.RoleId))
-//	if err != nil {
-//		return nil, status.Errorf(codes.Internal, "failed to get role: %v", err)
-//	}
-//
-//	return convertRoleWithPermissions(roleWithPerms), nil
-//}
+func (s *Server) RemovePermission(ctx context.Context, req *RemovePermissionRequest) (*RoleWithPermissions, error) {
+	if err := s.roleRepo.RemovePermission(ctx, int(req.RoleId), int(req.PermissionId)); err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to remove permission: %v", err)
+	}
+
+	roleWithPerms, err := s.roleRepo.GetRole(ctx, int(req.RoleId))
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to get role: %v", err)
+	}
+
+	return convertRoleWithPermissions(roleWithPerms), nil
+}
 
 func (s *Server) ListRoles(ctx context.Context, req *ListRolesRequest) (*ListRolesResponse, error) {
 	roles, err := s.roleRepo.ListRoles(ctx)
