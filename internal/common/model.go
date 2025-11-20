@@ -89,6 +89,8 @@ type ScanRule struct {
 	ExcludeDirRegexpQueue      []string
 	ForcedDoOwnSBOM            *bool
 	ActiveBlockingSCA          *bool
+	LatestCommentID            *int
+	Comments                   []*Comment
 }
 
 type RoleScope struct {
@@ -100,4 +102,13 @@ type RoleWithPermissions struct {
 	Role        *Role
 	Permissions []*Permission
 	Scope       RoleScope
+}
+
+type Comment struct {
+	ID                int
+	ScanRuleID        int
+	PreviousCommentID *int
+	Text              string
+	CreatedAt         time.Time
+	UserID            int
 }

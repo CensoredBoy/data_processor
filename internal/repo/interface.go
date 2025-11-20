@@ -110,8 +110,9 @@ type IScanInfoRepository interface {
 type IScanRuleRepository interface {
 	CreateScanRule(ctx context.Context, rule *common.ScanRule) error
 	GetScanRuleByID(ctx context.Context, id int) (*common.ScanRule, error)
-	UpdateScanRule(ctx context.Context, rule *common.ScanRule) error
+	UpdateScanRule(ctx context.Context, rule *common.ScanRule, userID *int, commentText *string) (*common.Comment, error)
 	DeleteScanRule(ctx context.Context, id int) error
 	ListScanRules(ctx context.Context) ([]*common.ScanRule, error)
 	GetScanRuleByComposite(ctx context.Context, appID, teamID, orgID int) (*common.ScanRule, error)
+	GetScanRuleWithComments(ctx context.Context, id int) (*common.ScanRule, error)
 }

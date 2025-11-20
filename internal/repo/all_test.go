@@ -550,7 +550,6 @@ func TestScanRuleRepository(t *testing.T) {
 		ForcedDoOwnSBOM:       boolPtr(true),
 		ExcludeDirRegexpQueue: []string{"node_modules"},
 	}
-
 	t.Run("Create rules for all levels", func(t *testing.T) {
 		require.NoError(t, repo.CreateScanRule(ctx, orgRule))
 		require.NoError(t, repo.CreateScanRule(ctx, teamRule))
@@ -616,7 +615,13 @@ func TestScanRuleRepository(t *testing.T) {
 			SCAScanEnabled: boolPtr(false), // Переопределяем унаследованное значение
 		}
 
-		require.NoError(t, repo.UpdateScanRule(ctx, updated))
+		userID := int(user.ID)
+		commentBody := "sca_scan_enabled: null -> false\nComment: update comment"
+		createdComment, err := repo.UpdateScanRule(ctx, updated, &userID, &commentBody)
+		require.NoError(t, err)
+		require.NotNil(t, createdComment)
+		require.Equal(t, userID, createdComment.UserID)
+		require.Equal(t, commentBody, createdComment.Text)
 
 		// Проверяем, что значение переопределилось
 		rule, err := repo.GetScanRuleByComposite(ctx, app.ID, team.ID, org.ID)
@@ -625,6 +630,15 @@ func TestScanRuleRepository(t *testing.T) {
 
 		// Проверяем, что остальные поля не изменились
 		assert.Equal(t, *teamRule.SASTScanEnabled, *rule.SASTScanEnabled)
+
+		fullRule, err := repo.GetScanRuleWithComments(ctx, appRule.ID)
+		require.NoError(t, err)
+		require.NotNil(t, fullRule)
+		require.NotNil(t, fullRule.LatestCommentID)
+		require.Len(t, fullRule.Comments, 1)
+		comment := fullRule.Comments[0]
+		require.Equal(t, userID, comment.UserID)
+		require.Equal(t, commentBody, comment.Text)
 	})
 
 	t.Run("Delete rules", func(t *testing.T) {

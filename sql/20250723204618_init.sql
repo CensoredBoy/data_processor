@@ -112,7 +112,7 @@ CREATE TABLE scan_rules (
                             ignore_repository_membership BOOLEAN,
                             allow_incremental_scans BOOLEAN,
                             allow_sast_empty_code BOOLEAN,
-                            exclude_dir_regexp_queue VARCHAR(255) ARRAY,
+                            exclude_dir_regexp_queue TEXT ARRAY DEFAULT '{}',
                             forced_do_own_sbom BOOLEAN,
                             active_blocking_sca BOOLEAN,
                             FOREIGN KEY (application_id) REFERENCES applications(id) ON DELETE CASCADE,

@@ -4,11 +4,12 @@ import (
 	"context"
 	"data_processor/internal/repo"
 	data_processor "data_processor/internal/transport"
-	"github.com/jackc/pgx/v5/pgxpool"
-	"google.golang.org/grpc"
 	"log"
 	"net"
 	"os"
+
+	"github.com/jackc/pgx/v5/pgxpool"
+	"google.golang.org/grpc"
 )
 
 func main() {

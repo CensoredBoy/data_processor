@@ -396,6 +396,7 @@ service ScanRuleService {
   rpc DeleteScanRule (DeleteScanRuleRequest) returns (google.protobuf.Empty);
   rpc ListScanRules (ListScanRulesRequest) returns (ListScanRulesResponse);
   rpc GetScanRuleByComposite (GetScanRuleByCompositeRequest) returns (ScanRule);
+  rpc GetScanRuleWithComments (GetScanRuleRequest) returns (ScanRuleWithComments);
 }
 
 message ScanRule {
@@ -413,6 +414,7 @@ message ScanRule {
   repeated string exclude_dir_regexp_queue = 12;
   optional bool forced_do_own_sbom = 13;
   optional bool active_blocking_sca = 14;
+  optional int32 latest_comment_id = 15;
 }
 
 message CreateScanRuleRequest {
@@ -450,6 +452,8 @@ message UpdateScanRuleRequest {
   repeated string exclude_dir_regexp_queue = 12;
   optional bool forced_do_own_sbom = 13;
   optional bool active_blocking_sca = 14;
+  optional string comment = 15;
+  optional int32 user_id = 16;
 }
 
 message DeleteScanRuleRequest {
@@ -470,6 +474,20 @@ message GetScanRuleByCompositeRequest {
 message ListScanRulesResponse {
   repeated ScanRule scan_rules = 1;
   int32 total_count = 2;
+}
+
+message Comment {
+  int32 id = 1;
+  int32 scan_rule_id = 2;
+  optional int32 previous_comment_id = 3;
+  string text = 4;
+  google.protobuf.Timestamp created_at = 5;
+  int32 user_id = 6;
+}
+
+message ScanRuleWithComments {
+  ScanRule rule = 1;
+  repeated Comment comments = 2;
 }
 
 // Permission Service

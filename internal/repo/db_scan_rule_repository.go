@@ -3,11 +3,13 @@ package repo
 import (
 	"context"
 	"data_processor/internal/common"
+	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
+	"time"
+
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/lib/pq"
 )
 
 var _ IScanRuleRepository = (*PgxRepository)(nil)
@@ -39,7 +41,7 @@ func (r *PgxRepository) CreateScanRule(ctx context.Context, rule *common.ScanRul
 		rule.IgnoreRepositoryMembership,
 		rule.AllowIncrementalScans,
 		rule.AllowSASTEmptyCode,
-		pq.Array(excludeDirs),
+		excludeDirs,
 		rule.ForcedDoOwnSBOM,
 		rule.ActiveBlockingSCA,
 	).Scan(&rule.ID)
@@ -52,11 +54,12 @@ func (r *PgxRepository) GetScanRuleByID(ctx context.Context, id int) (*common.Sc
         application_postfix, allow_unsafe_ext_distribs,
         ignore_repository_membership, allow_incremental_scans,
         allow_sast_empty_code, exclude_dir_regexp_queue, 
-        forced_do_own_sbom, active_blocking_sca
+        forced_do_own_sbom, active_blocking_sca, latest_comment_id
     FROM scan_rules WHERE id = $1`
 
 	rule := &common.ScanRule{}
 	var excludeDirs []string
+	var latestCommentID sql.NullInt32
 
 	err := r.pool.QueryRow(ctx, query, id).Scan(
 		&rule.ID,
@@ -70,9 +73,10 @@ func (r *PgxRepository) GetScanRuleByID(ctx context.Context, id int) (*common.Sc
 		&rule.IgnoreRepositoryMembership,
 		&rule.AllowIncrementalScans,
 		&rule.AllowSASTEmptyCode,
-		pq.Array(&excludeDirs),
+		&excludeDirs,
 		&rule.ForcedDoOwnSBOM,
 		&rule.ActiveBlockingSCA,
+		&latestCommentID,
 	)
 
 	if err != nil {
@@ -83,11 +87,15 @@ func (r *PgxRepository) GetScanRuleByID(ctx context.Context, id int) (*common.Sc
 	}
 
 	rule.ExcludeDirRegexpQueue = excludeDirs
+	if latestCommentID.Valid {
+		val := int(latestCommentID.Int32)
+		rule.LatestCommentID = &val
+	}
 	return rule, nil
 }
 
-func (r *PgxRepository) UpdateScanRule(ctx context.Context, rule *common.ScanRule) error {
-	query := `UPDATE scan_rules SET 
+func (r *PgxRepository) UpdateScanRule(ctx context.Context, rule *common.ScanRule, userID *int, commentText *string) (*common.Comment, error) {
+	updateQuery := `UPDATE scan_rules SET 
         application_id = $1, 
         team_id = $2, 
         organization_id = $3,
@@ -109,7 +117,24 @@ func (r *PgxRepository) UpdateScanRule(ctx context.Context, rule *common.ScanRul
 		excludeDirs = []string{}
 	}
 
-	_, err := r.pool.Exec(ctx, query,
+	tx, err := r.pool.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		_ = tx.Rollback(ctx)
+	}()
+
+	var latestCommentID sql.NullInt32
+	err = tx.QueryRow(ctx, `SELECT latest_comment_id FROM scan_rules WHERE id = $1 FOR UPDATE`, rule.ID).Scan(&latestCommentID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, fmt.Errorf("scan rule not found")
+		}
+		return nil, err
+	}
+
+	_, err = tx.Exec(ctx, updateQuery,
 		rule.ApplicationID,
 		rule.TeamID,
 		rule.OrganizationID,
@@ -120,12 +145,80 @@ func (r *PgxRepository) UpdateScanRule(ctx context.Context, rule *common.ScanRul
 		rule.IgnoreRepositoryMembership,
 		rule.AllowIncrementalScans,
 		rule.AllowSASTEmptyCode,
-		pq.Array(excludeDirs),
+		excludeDirs,
 		rule.ForcedDoOwnSBOM,
 		rule.ActiveBlockingSCA,
 		rule.ID,
 	)
-	return err
+	if err != nil {
+		return nil, err
+	}
+
+	if latestCommentID.Valid {
+		val := int(latestCommentID.Int32)
+		rule.LatestCommentID = &val
+	} else {
+		rule.LatestCommentID = nil
+	}
+
+	var createdComment *common.Comment
+
+	var trimmedComment string
+	if commentText != nil {
+		trimmedComment = strings.TrimSpace(*commentText)
+	}
+
+	if latestCommentID.Valid {
+		val := int(latestCommentID.Int32)
+		rule.LatestCommentID = &val
+	} else {
+		rule.LatestCommentID = nil
+	}
+
+	if trimmedComment != "" {
+		if userID == nil || *userID == 0 {
+			return nil, fmt.Errorf("user id is required for comment")
+		}
+
+		var prevValue interface{}
+		if latestCommentID.Valid {
+			prevValue = int(latestCommentID.Int32)
+		}
+
+		newComment := &common.Comment{
+			ScanRuleID: rule.ID,
+			Text:       trimmedComment,
+			UserID:     *userID,
+		}
+
+		var prev sql.NullInt32
+		err = tx.QueryRow(ctx, `INSERT INTO comments (scan_rule_id, previous_comment_id, user_id, comment) 
+				VALUES ($1, $2, $3, $4) RETURNING id, previous_comment_id, created_at`,
+			newComment.ScanRuleID, prevValue, newComment.UserID, newComment.Text,
+		).Scan(&newComment.ID, &prev, &newComment.CreatedAt)
+		if err != nil {
+			return nil, err
+		}
+
+		if prev.Valid {
+			val := int(prev.Int32)
+			newComment.PreviousCommentID = &val
+		}
+
+		_, err = tx.Exec(ctx, `UPDATE scan_rules SET latest_comment_id = $1 WHERE id = $2`, newComment.ID, rule.ID)
+		if err != nil {
+			return nil, err
+		}
+
+		createdComment = newComment
+		rule.LatestCommentID = &newComment.ID
+	}
+
+	if err = tx.Commit(ctx); err != nil {
+		return nil, err
+	}
+
+	return createdComment, nil
 }
 
 func (r *PgxRepository) DeleteScanRule(ctx context.Context, id int) error {
@@ -141,7 +234,7 @@ func (r *PgxRepository) ListScanRules(ctx context.Context) ([]*common.ScanRule, 
         application_postfix, allow_unsafe_ext_distribs,
         ignore_repository_membership, allow_incremental_scans,
         allow_sast_empty_code, exclude_dir_regexp_queue, 
-        forced_do_own_sbom, active_blocking_sca
+        forced_do_own_sbom, active_blocking_sca, latest_comment_id
     FROM scan_rules`
 
 	rows, err := r.pool.Query(ctx, query)
@@ -154,6 +247,7 @@ func (r *PgxRepository) ListScanRules(ctx context.Context) ([]*common.ScanRule, 
 	for rows.Next() {
 		var rule common.ScanRule
 		var excludeDirs []string
+		var latestCommentID sql.NullInt32
 
 		err := rows.Scan(
 			&rule.ID,
@@ -167,15 +261,20 @@ func (r *PgxRepository) ListScanRules(ctx context.Context) ([]*common.ScanRule, 
 			&rule.IgnoreRepositoryMembership,
 			&rule.AllowIncrementalScans,
 			&rule.AllowSASTEmptyCode,
-			pq.Array(&excludeDirs),
+			&excludeDirs,
 			&rule.ForcedDoOwnSBOM,
 			&rule.ActiveBlockingSCA,
+			&latestCommentID,
 		)
 		if err != nil {
 			return nil, err
 		}
 
 		rule.ExcludeDirRegexpQueue = excludeDirs
+		if latestCommentID.Valid {
+			val := int(latestCommentID.Int32)
+			rule.LatestCommentID = &val
+		}
 		rules = append(rules, &rule)
 	}
 
@@ -196,7 +295,7 @@ func (r *PgxRepository) GetScanRuleByComposite(ctx context.Context, appID, teamI
 	// Вспомогательная функция для получения правил
 	getRules := func(query string, args ...interface{}) (*common.ScanRule, error) {
 		var rule common.ScanRule
-		var excludeDirs pgtype.FlatArray[string] // Используем pgtype для массивов
+		var excludeDirs []string
 
 		err := r.pool.QueryRow(ctx, query, args...).Scan(
 			&rule.SCAScanEnabled,
@@ -206,7 +305,7 @@ func (r *PgxRepository) GetScanRuleByComposite(ctx context.Context, appID, teamI
 			&rule.IgnoreRepositoryMembership,
 			&rule.AllowIncrementalScans,
 			&rule.AllowSASTEmptyCode,
-			&excludeDirs, // Используем pgtype напрямую
+			&excludeDirs,
 			&rule.ForcedDoOwnSBOM,
 			&rule.ActiveBlockingSCA,
 		)
@@ -309,4 +408,47 @@ func (r *PgxRepository) GetScanRuleByComposite(ctx context.Context, appID, teamI
 	mergeRule(result, appRule)
 
 	return result, nil
+}
+
+func (r *PgxRepository) GetScanRuleWithComments(ctx context.Context, id int) (*common.ScanRule, error) {
+	rule, err := r.GetScanRuleByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if rule == nil {
+		return nil, nil
+	}
+
+	rows, err := r.pool.Query(ctx, `
+        SELECT id, scan_rule_id, previous_comment_id, user_id, comment, created_at
+        FROM comments
+        WHERE scan_rule_id = $1
+        ORDER BY created_at ASC`, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var comments []*common.Comment
+	for rows.Next() {
+		var c common.Comment
+		var prev sql.NullInt32
+		var created time.Time
+
+		if err := rows.Scan(&c.ID, &c.ScanRuleID, &prev, &c.UserID, &c.Text, &created); err != nil {
+			return nil, err
+		}
+		if prev.Valid {
+			val := int(prev.Int32)
+			c.PreviousCommentID = &val
+		}
+		c.CreatedAt = created
+		comments = append(comments, &c)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	rule.Comments = comments
+	return rule, nil
 }

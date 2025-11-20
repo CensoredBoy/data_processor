@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.5.1
 // - protoc             v5.26.1
-// source: processor.proto
+// source: internal/transport/processor.proto
 
 package data_processor
 
@@ -350,7 +350,7 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "processor.proto",
+	Metadata: "internal/transport/processor.proto",
 }
 
 const (
@@ -684,7 +684,7 @@ var OrganizationService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "processor.proto",
+	Metadata: "internal/transport/processor.proto",
 }
 
 const (
@@ -1056,7 +1056,7 @@ var TeamService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "processor.proto",
+	Metadata: "internal/transport/processor.proto",
 }
 
 const (
@@ -1390,7 +1390,7 @@ var ApplicationService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "processor.proto",
+	Metadata: "internal/transport/processor.proto",
 }
 
 const (
@@ -1686,7 +1686,7 @@ var VersionService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "processor.proto",
+	Metadata: "internal/transport/processor.proto",
 }
 
 const (
@@ -1944,7 +1944,7 @@ var ScanService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "processor.proto",
+	Metadata: "internal/transport/processor.proto",
 }
 
 const (
@@ -2202,16 +2202,17 @@ var ScanInfoService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "processor.proto",
+	Metadata: "internal/transport/processor.proto",
 }
 
 const (
-	ScanRuleService_CreateScanRule_FullMethodName         = "/data_processor.ScanRuleService/CreateScanRule"
-	ScanRuleService_GetScanRule_FullMethodName            = "/data_processor.ScanRuleService/GetScanRule"
-	ScanRuleService_UpdateScanRule_FullMethodName         = "/data_processor.ScanRuleService/UpdateScanRule"
-	ScanRuleService_DeleteScanRule_FullMethodName         = "/data_processor.ScanRuleService/DeleteScanRule"
-	ScanRuleService_ListScanRules_FullMethodName          = "/data_processor.ScanRuleService/ListScanRules"
-	ScanRuleService_GetScanRuleByComposite_FullMethodName = "/data_processor.ScanRuleService/GetScanRuleByComposite"
+	ScanRuleService_CreateScanRule_FullMethodName          = "/data_processor.ScanRuleService/CreateScanRule"
+	ScanRuleService_GetScanRule_FullMethodName             = "/data_processor.ScanRuleService/GetScanRule"
+	ScanRuleService_UpdateScanRule_FullMethodName          = "/data_processor.ScanRuleService/UpdateScanRule"
+	ScanRuleService_DeleteScanRule_FullMethodName          = "/data_processor.ScanRuleService/DeleteScanRule"
+	ScanRuleService_ListScanRules_FullMethodName           = "/data_processor.ScanRuleService/ListScanRules"
+	ScanRuleService_GetScanRuleByComposite_FullMethodName  = "/data_processor.ScanRuleService/GetScanRuleByComposite"
+	ScanRuleService_GetScanRuleWithComments_FullMethodName = "/data_processor.ScanRuleService/GetScanRuleWithComments"
 )
 
 // ScanRuleServiceClient is the client API for ScanRuleService service.
@@ -2226,6 +2227,7 @@ type ScanRuleServiceClient interface {
 	DeleteScanRule(ctx context.Context, in *DeleteScanRuleRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	ListScanRules(ctx context.Context, in *ListScanRulesRequest, opts ...grpc.CallOption) (*ListScanRulesResponse, error)
 	GetScanRuleByComposite(ctx context.Context, in *GetScanRuleByCompositeRequest, opts ...grpc.CallOption) (*ScanRule, error)
+	GetScanRuleWithComments(ctx context.Context, in *GetScanRuleRequest, opts ...grpc.CallOption) (*ScanRuleWithComments, error)
 }
 
 type scanRuleServiceClient struct {
@@ -2296,6 +2298,16 @@ func (c *scanRuleServiceClient) GetScanRuleByComposite(ctx context.Context, in *
 	return out, nil
 }
 
+func (c *scanRuleServiceClient) GetScanRuleWithComments(ctx context.Context, in *GetScanRuleRequest, opts ...grpc.CallOption) (*ScanRuleWithComments, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ScanRuleWithComments)
+	err := c.cc.Invoke(ctx, ScanRuleService_GetScanRuleWithComments_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ScanRuleServiceServer is the server API for ScanRuleService service.
 // All implementations must embed UnimplementedScanRuleServiceServer
 // for forward compatibility.
@@ -2308,6 +2320,7 @@ type ScanRuleServiceServer interface {
 	DeleteScanRule(context.Context, *DeleteScanRuleRequest) (*emptypb.Empty, error)
 	ListScanRules(context.Context, *ListScanRulesRequest) (*ListScanRulesResponse, error)
 	GetScanRuleByComposite(context.Context, *GetScanRuleByCompositeRequest) (*ScanRule, error)
+	GetScanRuleWithComments(context.Context, *GetScanRuleRequest) (*ScanRuleWithComments, error)
 	mustEmbedUnimplementedScanRuleServiceServer()
 }
 
@@ -2335,6 +2348,9 @@ func (UnimplementedScanRuleServiceServer) ListScanRules(context.Context, *ListSc
 }
 func (UnimplementedScanRuleServiceServer) GetScanRuleByComposite(context.Context, *GetScanRuleByCompositeRequest) (*ScanRule, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetScanRuleByComposite not implemented")
+}
+func (UnimplementedScanRuleServiceServer) GetScanRuleWithComments(context.Context, *GetScanRuleRequest) (*ScanRuleWithComments, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetScanRuleWithComments not implemented")
 }
 func (UnimplementedScanRuleServiceServer) mustEmbedUnimplementedScanRuleServiceServer() {}
 func (UnimplementedScanRuleServiceServer) testEmbeddedByValue()                         {}
@@ -2465,6 +2481,24 @@ func _ScanRuleService_GetScanRuleByComposite_Handler(srv interface{}, ctx contex
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ScanRuleService_GetScanRuleWithComments_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetScanRuleRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ScanRuleServiceServer).GetScanRuleWithComments(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ScanRuleService_GetScanRuleWithComments_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ScanRuleServiceServer).GetScanRuleWithComments(ctx, req.(*GetScanRuleRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ScanRuleService_ServiceDesc is the grpc.ServiceDesc for ScanRuleService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -2496,9 +2530,13 @@ var ScanRuleService_ServiceDesc = grpc.ServiceDesc{
 			MethodName: "GetScanRuleByComposite",
 			Handler:    _ScanRuleService_GetScanRuleByComposite_Handler,
 		},
+		{
+			MethodName: "GetScanRuleWithComments",
+			Handler:    _ScanRuleService_GetScanRuleWithComments_Handler,
+		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "processor.proto",
+	Metadata: "internal/transport/processor.proto",
 }
 
 const (
@@ -2870,7 +2908,7 @@ var PermissionService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "processor.proto",
+	Metadata: "internal/transport/processor.proto",
 }
 
 const (
@@ -3394,5 +3432,5 @@ var RoleService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "processor.proto",
+	Metadata: "internal/transport/processor.proto",
 }
